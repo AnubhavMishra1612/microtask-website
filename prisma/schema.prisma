@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TaskStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+  EXPIRED
+}
+
+enum ProofType {
+  TEXT
+  IMAGE
+  BOTH
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReviewAction {
+  APPROVED
+  REJECTED
+}
+
+model AdminUser {
+  id           String             @id @default(cuid())
+  email        String             @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  sessions     AdminSession[]
+  reviewLogs   SubmissionReviewLog[]
+}
+
+model AdminSession {
+  id           String    @id @default(cuid())
+  sessionToken String    @unique
+  adminId      String
+  admin        AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+
+  @@index([adminId])
+  @@index([expiresAt])
+}
+
+model Task {
+  id                 String           @id @default(cuid())
+  title              String
+  description        String           @db.Text
+  taskUrl            String?          @db.Text
+  instructions       String           @db.Text
+  rewardInr          Decimal          @db.Decimal(10, 2)
+  proofRequirements  String           @db.Text
+  proofType          ProofType        @default(BOTH)
+  status             TaskStatus       @default(DRAFT)
+  deadline           DateTime?
+  maxSubmissions     Int?
+  currentSubmissions Int              @default(0)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  submissions        TaskSubmission[]
+
+  @@index([status])
+}
+
+model TaskSubmission {
+  id                 String                @id @default(cuid())
+  taskId             String
+  task               Task                  @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  submitterName      String
+  contactInfo        String
+  proofText          String?               @db.Text
+  proofFileKey       String?
+  proofFileName      String?
+  proofFileSize      Int?
+  proofMimeType      String?
+  rewardSnapshot     Decimal               @db.Decimal(10, 2)
+  referenceCode      String                @unique
+  status             SubmissionStatus      @default(PENDING)
+  rejectionReason    String?               @db.Text
+  submittedAt        DateTime              @default(now())
+  reviewedAt         DateTime?
+  reviewedByAdminId  String?
+  reviewLogs         SubmissionReviewLog[]
+
+  @@index([taskId])
+  @@index([status])
+  @@index([referenceCode])
+}
+
+model SubmissionReviewLog {
+  id           String         @id @default(cuid())
+  submissionId String
+  submission   TaskSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  adminId      String
+  admin        AdminUser      @relation(fields: [adminId], references: [id], onDelete: Restrict)
+  action       ReviewAction
+  reason       String?        @db.Text
+  createdAt    DateTime       @default(now())
+
+  @@index([submissionId])
+  @@index([adminId])
+}
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model RateLimitBucket {
+  key       String   @id
+  count     Int      @default(1)
+  resetAt   DateTime
+  updatedAt DateTime @updatedAt
+
+  @@index([resetAt])
+}

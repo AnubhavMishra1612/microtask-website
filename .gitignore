@@ -1,0 +1,41 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Next.js build
+/.next/
+/out/
+
+# Production
+/build
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary scratch and diagnostic scripts
+/scratch/
+
+
+# Local private proof uploads (never commit uploaded files)
+/storage/
+/storage/private_proofs/
+/uploads/
+
+# Environment files
+.env
+.env*.local
+!.env.example
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
