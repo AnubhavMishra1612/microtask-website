@@ -84,9 +84,10 @@ export default async function TaskDetailsPage({ params }: TaskDetailsPageProps) 
             {task.title}
           </h1>
 
-          <p className="mt-3 text-sm text-slate-600 sm:text-base leading-relaxed">
+          <p className="mt-3 text-sm text-slate-600 sm:text-base leading-relaxed whitespace-pre-line break-words">
             {task.description}
           </p>
+
 
           {task.deadline && (
             <div className="mt-4 flex items-center gap-2 text-xs sm:text-sm text-slate-500">

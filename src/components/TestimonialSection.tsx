@@ -1,164 +1,144 @@
-import { MessageSquareQuote, CheckCircle, Info, User } from "lucide-react";
+import {
+  ShieldCheck,
+  ListOrdered,
+  FileCheck2,
+  UserCheck,
+  KeyRound,
+  ClipboardCheck,
+  Coins,
+  CheckCircle2,
+} from "lucide-react";
 
-export interface TestimonialItem {
+export interface TrustFeatureItem {
   id: string;
   category: string;
-  feedback: string;
-  authorLabel: string;
-  role: string;
-  isDemo: boolean;
-  dateLabel: string;
+  title: string;
+  description: string;
+  highlight: string;
+  iconName: "list" | "proof" | "account" | "tracking" | "review" | "reward";
 }
 
-/**
- * Demo testimonials list.
- * TO REPLACE WITH REAL SOCIAL PROOF:
- * Replace these placeholder cards with verified, permissioned feedback from real users
- * once campaigns have completed review and payout cycles.
- */
-export const DEMO_TESTIMONIALS: TestimonialItem[] = [
+export const PLATFORM_TRUST_FEATURES: TrustFeatureItem[] = [
   {
-    id: "demo-1",
-    category: "Workflow Clarity",
-    feedback:
-      "The survey instructions were unambiguous and concise. Having step-by-step numbers made it easy to complete without second-guessing requirements.",
-    authorLabel: "Participant A.R.",
-    role: "Survey Reviewer",
-    isDemo: true,
-    dateLabel: "Beta Verification",
+    id: "feature-instructions",
+    category: "Task Clarity",
+    title: "Clear Task Instructions",
+    description:
+      "Every microtask provides numbered step-by-step instructions and a direct target link, ensuring you understand exactly what actions are required before you begin.",
+    highlight: "Numbered step-by-step guidance",
+    iconName: "list",
   },
   {
-    id: "demo-2",
-    category: "Tracking Transparency",
-    feedback:
-      "Tracking with the generated TSK token worked immediately. I could check review status without having to register a separate user account.",
-    authorLabel: "Participant K.S.",
-    role: "Mobile App Tester",
-    isDemo: true,
-    dateLabel: "Beta Verification",
+    id: "feature-proof",
+    category: "Verification Standards",
+    title: "Defined Proof Requirements",
+    description:
+      "Tasks explicitly specify the required proof format—whether a verification screenshot, completion text code, or both—removing guesswork from your submission.",
+    highlight: "Specific screenshot or text criteria",
+    iconName: "proof",
   },
   {
-    id: "demo-3",
-    category: "Proof Requirements",
-    feedback:
-      "The proof checklist specifies exactly what screenshot details are audited. It eliminates confusion about whether the proof will be accepted.",
-    authorLabel: "Participant V.N.",
-    role: "Task Contributor",
-    isDemo: true,
-    dateLabel: "Beta Verification",
+    id: "feature-no-account",
+    category: "Worker Privacy",
+    title: "No Worker Account Required",
+    description:
+      "Participants can complete active tasks and submit proof without passwords or account registration. We collect only what is necessary to audit task completion.",
+    highlight: "Frictionless, registration-free access",
+    iconName: "account",
   },
   {
-    id: "demo-4",
-    category: "Mobile Performance",
-    feedback:
-      "The layout loads fast on mobile 4G with clean buttons and legible text. No intrusive ads or confusing redirects.",
-    authorLabel: "Participant M.P.",
-    role: "Android User",
-    isDemo: true,
-    dateLabel: "Beta Verification",
+    id: "feature-tracking",
+    category: "Transparent Status",
+    title: "Private Submission Tracking",
+    description:
+      "Every submission generates an unpredictable cryptographic reference token (e.g. TSK-XXXX-XXXX-XXXX). Use this code anytime to check review status without exposing personal details.",
+    highlight: "Unpredictable private reference tokens",
+    iconName: "tracking",
   },
   {
-    id: "demo-5",
-    category: "Validation Feedback",
-    feedback:
-      "Form validation catches wrong image formats and large files right away before submitting, which saves mobile data.",
-    authorLabel: "Participant S.G.",
-    role: "Community Tester",
-    isDemo: true,
-    dateLabel: "Beta Verification",
+    id: "feature-review",
+    category: "Audit Integrity",
+    title: "Admin-Reviewed Submissions",
+    description:
+      "Submissions are evaluated manually by administrators against defined criteria. Any rejected submission includes a clear reason recorded in the review log.",
+    highlight: "Manual review with explicit feedback",
+    iconName: "review",
   },
   {
-    id: "demo-6",
-    category: "Data Privacy",
-    feedback:
-      "Only the reference code is used to query submission status. Contact info and personal worker details are never leaked on the public tracking page.",
-    authorLabel: "Participant D.B.",
-    role: "Privacy Reviewer",
-    isDemo: true,
-    dateLabel: "Beta Verification",
+    id: "feature-reward",
+    category: "Reward Transparency",
+    title: "Transparent Task Rewards",
+    description:
+      "Listed INR (₹) reward amounts are shown upfront on every task. The platform records a snapshot of the active reward at the exact moment of submission.",
+    highlight: "Upfront listed INR reward snapshot",
+    iconName: "reward",
   },
 ];
 
 interface TestimonialSectionProps {
-  testimonials?: TestimonialItem[];
+  features?: TrustFeatureItem[];
 }
 
 export function TestimonialSection({
-  testimonials = DEMO_TESTIMONIALS,
+  features = PLATFORM_TRUST_FEATURES,
 }: TestimonialSectionProps) {
-  const hasDemoEntries = testimonials.some((t) => t.isDemo);
-
   return (
     <section
-      id="feedback"
-      aria-labelledby="testimonials-heading"
+      id="trust"
+      aria-labelledby="trust-features-heading"
       className="mt-16 sm:mt-24"
     >
-      <div className="text-center max-w-2xl mx-auto mb-8">
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 border border-slate-200 mb-3">
-          <MessageSquareQuote className="h-3.5 w-3.5 text-indigo-600" />
-          User Experience & Testing Feedback
+      <div className="text-center max-w-2xl mx-auto mb-10">
+        <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3.5 py-1 text-xs font-bold text-indigo-700 border border-indigo-100 mb-3 shadow-xs">
+          <ShieldCheck className="h-4 w-4 text-indigo-600" />
+          <span>How We Build Trust</span>
         </div>
 
         <h2
-          id="testimonials-heading"
+          id="trust-features-heading"
           className="text-2xl font-extrabold text-slate-900 sm:text-3xl tracking-tight"
         >
-          Built for Clarity, Speed & Worker Trust
+          Engineered for Transparency & Simplicity
         </h2>
         <p className="mt-2 text-sm text-slate-600 sm:text-base leading-relaxed">
-          See how our transparent microtask workflow, private token tracking, and structured proof submission perform in real-world testing.
+          We operate with open rules, private token tracking, and structured proof verification. Here is how our workflow protects participant time and privacy.
         </p>
-
-        {hasDemoEntries && (
-          <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3.5 py-1.5 text-xs text-amber-800 text-left">
-            <Info className="h-4 w-4 text-amber-600 flex-shrink-0" />
-            <span>
-              <strong>Transparency Notice:</strong> Displaying demo test cards for UX demonstration. Replace with verified participant feedback post-campaign.
-            </span>
-          </div>
-        )}
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {testimonials.map((item) => (
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {features.map((item) => (
           <div
             key={item.id}
-            className="group relative flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-indigo-300 hover:shadow-md"
+            className="group relative flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-indigo-300 hover:shadow-md"
           >
             <div>
               <div className="flex items-center justify-between gap-2 mb-4">
-                <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 border border-indigo-100">
+                <span className="inline-flex items-center rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 border border-indigo-100">
                   {item.category}
                 </span>
 
-                {item.isDemo && (
-                  <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 border border-slate-200">
-                    Demo Card
-                  </span>
-                )}
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-indigo-600 border border-slate-200/60 shadow-xs group-hover:scale-105 transition-transform duration-200">
+                  {item.iconName === "list" && <ListOrdered className="h-4 w-4" />}
+                  {item.iconName === "proof" && <FileCheck2 className="h-4 w-4" />}
+                  {item.iconName === "account" && <UserCheck className="h-4 w-4" />}
+                  {item.iconName === "tracking" && <KeyRound className="h-4 w-4" />}
+                  {item.iconName === "review" && <ClipboardCheck className="h-4 w-4" />}
+                  {item.iconName === "reward" && <Coins className="h-4 w-4" />}
+                </div>
               </div>
 
-              <p className="text-sm text-slate-700 leading-relaxed italic">
-                &ldquo;{item.feedback}&rdquo;
+              <h3 className="text-base font-bold text-slate-900 mb-2 group-hover:text-indigo-600 transition-colors">
+                {item.title}
+              </h3>
+
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                {item.description}
               </p>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 border border-slate-200">
-                  <User className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800">{item.authorLabel}</p>
-                  <p className="text-[11px] text-slate-500">{item.role}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded">
-                <CheckCircle className="h-3 w-3" />
-                <span>{item.dateLabel}</span>
-              </div>
+            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
+              <span>{item.highlight}</span>
             </div>
           </div>
         ))}
@@ -166,3 +146,4 @@ export function TestimonialSection({
     </section>
   );
 }
+

@@ -50,7 +50,9 @@ export default async function HomePage() {
     proofType: t.proofType,
     deadline: t.deadline ? t.deadline.toISOString() : null,
     currentSubmissions: t.currentSubmissions,
+    maxSubmissions: t.maxSubmissions,
   }));
+
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -216,8 +218,9 @@ export default async function HomePage() {
         <TaskList initialTasks={formattedTasks} />
       </section>
 
-      {/* 4. Testimonials Section (Clearly Labeled Demo Social Proof) */}
+      {/* 4. Platform Trust & Verification Standards */}
       <TestimonialSection />
+
 
       {/* 5. Community Announcements Callout */}
       {showTelegram && (

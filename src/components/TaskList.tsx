@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { TaskCard } from "./TaskCard";
-import { Search, Filter, Inbox } from "lucide-react";
+import { Search, Filter, Inbox, X } from "lucide-react";
 
 export interface TaskItem {
   id: string;
@@ -12,6 +12,7 @@ export interface TaskItem {
   proofType: "TEXT" | "IMAGE" | "BOTH";
   deadline: string | null;
   currentSubmissions: number;
+  maxSubmissions?: number | null;
 }
 
 export function TaskList({ initialTasks }: { initialTasks: TaskItem[] }) {
@@ -37,20 +38,29 @@ export function TaskList({ initialTasks }: { initialTasks: TaskItem[] }) {
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search tasks by keyword..."
+            placeholder="Search tasks by title or keyword..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-9 text-sm text-slate-900 placeholder-slate-400 shadow-xs focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Filter Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           <span className="text-xs font-semibold text-slate-500 mr-1 flex items-center gap-1">
-            <Filter className="h-3.5 w-3.5" /> Filter:
+            <Filter className="h-3.5 w-3.5 text-slate-400" /> Filter:
           </span>
           {[
-            { label: "All", value: "ALL" },
+            { label: "All Tasks", value: "ALL" },
             { label: "Screenshot", value: "IMAGE" },
             { label: "Text Proof", value: "TEXT" },
             { label: "Both", value: "BOTH" },
@@ -58,7 +68,7 @@ export function TaskList({ initialTasks }: { initialTasks: TaskItem[] }) {
             <button
               key={tab.value}
               onClick={() => setSelectedProofType(tab.value)}
-              className={`rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition ${
+              className={`rounded-full px-3.5 py-1.5 text-xs font-bold whitespace-nowrap transition-all duration-150 ${
                 selectedProofType === tab.value
                   ? "bg-indigo-600 text-white shadow-sm"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -72,7 +82,7 @@ export function TaskList({ initialTasks }: { initialTasks: TaskItem[] }) {
 
       {/* Task Grid or Empty State */}
       {filteredTasks.length > 0 ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTasks.map((task) => (
             <TaskCard
               key={task.id}
@@ -83,20 +93,21 @@ export function TaskList({ initialTasks }: { initialTasks: TaskItem[] }) {
               proofType={task.proofType}
               deadline={task.deadline}
               currentSubmissions={task.currentSubmissions}
+              maxSubmissions={task.maxSubmissions}
             />
           ))}
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-xs">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
             <Inbox className="h-6 w-6" />
           </div>
-          <h3 className="mt-4 text-base font-semibold text-slate-900">
+          <h3 className="mt-4 text-base font-bold text-slate-900">
             No active tasks found
           </h3>
-          <p className="mt-1 text-sm text-slate-500 max-w-sm mx-auto">
+          <p className="mt-1 text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
             {searchQuery || selectedProofType !== "ALL"
-              ? "No tasks match your current search criteria. Try resetting filters."
+              ? "No tasks match your current search criteria. Try resetting your search or filters."
               : "There are currently no active tasks available. Check back soon or join our Telegram channel for announcements."}
           </p>
           {(searchQuery || selectedProofType !== "ALL") && (
@@ -105,7 +116,7 @@ export function TaskList({ initialTasks }: { initialTasks: TaskItem[] }) {
                 setSearchQuery("");
                 setSelectedProofType("ALL");
               }}
-              className="mt-4 inline-flex items-center rounded-md bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+              className="mt-4 inline-flex items-center rounded-xl bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition"
             >
               Clear filters
             </button>
@@ -115,3 +126,4 @@ export function TaskList({ initialTasks }: { initialTasks: TaskItem[] }) {
     </div>
   );
 }
+
