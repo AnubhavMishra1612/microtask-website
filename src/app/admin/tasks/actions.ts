@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { taskSchema, taskStatusEnum } from "@/lib/validations";
+import { deletePrivateProof } from "@/lib/storage";
 import { Prisma, TaskStatus } from "@prisma/client";
 
 export interface TaskActionResponse {
@@ -229,3 +230,109 @@ export async function updateTaskStatusAction(
     return { error: "Failed to update task status." };
   }
 }
+
+/**
+ * Core atomic logic for permanently deleting a task.
+ * Enforces:
+ * 1. Validation of taskId.
+ * 2. Relationship inspection: if any APPROVED submissions exist, deletion is blocked
+ *    to preserve worker earnings and financial ledger integrity.
+ * 3. Associated uploaded proof files are safely deleted from private storage.
+ * 4. Task, non-approved submissions, and review logs are deleted atomically.
+ */
+export async function executeDeleteTask(
+  taskId: string
+): Promise<TaskActionResponse & { statusCode?: number }> {
+  if (!taskId || typeof taskId !== "string") {
+    return { error: "Invalid task identifier.", statusCode: 400 };
+  }
+
+  try {
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        submissions: {
+          select: {
+            id: true,
+            status: true,
+            proofFileKey: true,
+          },
+        },
+      },
+    });
+
+    if (!task) {
+      return { error: "Task not found.", statusCode: 404 };
+    }
+
+    // Inspect relationships: check for approved submissions with credited earnings
+    const approvedSubmissions = task.submissions.filter((s) => s.status === "APPROVED");
+    if (approvedSubmissions.length > 0) {
+      return {
+        error: `Cannot permanently delete task: It has ${approvedSubmissions.length} approved submission(s) associated with worker wallet earnings and financial audit records. To protect financial integrity, please keep this task CLOSED.`,
+        statusCode: 409, // Conflict
+      };
+    }
+
+    // Clean up associated proof files from private storage
+    const fileKeys = task.submissions
+      .map((s) => s.proofFileKey)
+      .filter((k): k is string => !!k);
+
+    for (const key of fileKeys) {
+      try {
+        await deletePrivateProof(key);
+      } catch (err) {
+        console.warn(`Failed to clean up proof file ${key} during task deletion:`, err);
+      }
+    }
+
+    // Atomic transaction for database deletion
+    await prisma.$transaction(async (tx) => {
+      const subIds = task.submissions.map((s) => s.id);
+      if (subIds.length > 0) {
+        // Delete submission review logs
+        await tx.submissionReviewLog.deleteMany({
+          where: { submissionId: { in: subIds } },
+        });
+
+        // Delete submissions
+        await tx.taskSubmission.deleteMany({
+          where: { id: { in: subIds } },
+        });
+      }
+
+      // Delete the task itself
+      await tx.task.delete({
+        where: { id: taskId },
+      });
+    }, {
+      maxWait: 10000,
+      timeout: 20000,
+    });
+
+    try {
+      revalidatePath("/admin/tasks");
+      revalidatePath("/admin");
+      revalidatePath("/");
+    } catch {
+      // Skipped outside Next.js request context
+    }
+
+    return { success: true, statusCode: 200 };
+  } catch (error) {
+    console.error("Failed to delete task:", error);
+    return { error: "Failed to delete task. Please try again.", statusCode: 500 };
+  }
+}
+
+/**
+ * Protected Server Action for permanently deleting a task.
+ * Enforces admin authorization.
+ */
+export async function deleteTaskAction(taskId: string): Promise<TaskActionResponse> {
+  await requireAdmin();
+  const res = await executeDeleteTask(taskId);
+  return { success: res.success, error: res.error, fieldErrors: res.fieldErrors };
+}
+

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatINR, formatDateIST } from "@/lib/utils";
-import { updateTaskStatusAction } from "./actions";
+import { updateTaskStatusAction, deleteTaskAction } from "./actions";
 import { TaskFormModal, TaskFormData } from "./TaskFormModal";
 import { TaskStatus } from "@prisma/client";
 import {
@@ -10,6 +10,7 @@ import {
   Pause,
   XCircle,
   Edit,
+  Trash2,
   Clock,
   Search,
   Filter,
@@ -42,6 +43,29 @@ export function TaskTable({ initialTasks }: { initialTasks: TaskRecord[] }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState<TaskFormData | null>(null);
   const [statusLoadingId, setStatusLoadingId] = useState<string | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<TaskRecord | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleConfirmDelete = async () => {
+    if (!taskToDelete) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      const res = await deleteTaskAction(taskToDelete.id);
+      if (res.success) {
+        setTasks((prev) => prev.filter((t) => t.id !== taskToDelete.id));
+        setTaskToDelete(null);
+      } else {
+        setDeleteError(res.error || "Failed to delete task.");
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+      setDeleteError("An unexpected error occurred while deleting the task.");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
     setStatusLoadingId(taskId);
@@ -257,6 +281,18 @@ export function TaskTable({ initialTasks }: { initialTasks: TaskRecord[] }) {
                         <Edit className="h-3 w-3" />
                         Edit
                       </button>
+
+                      <button
+                        onClick={() => {
+                          setDeleteError(null);
+                          setTaskToDelete(task);
+                        }}
+                        className="inline-flex items-center gap-1 rounded bg-rose-50 border border-rose-200 px-2 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-100 transition"
+                        title="Delete task permanently"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -283,6 +319,71 @@ export function TaskTable({ initialTasks }: { initialTasks: TaskRecord[] }) {
           }}
           taskToEdit={taskToEdit}
         />
+      )}
+
+      {/* Permanent Deletion Confirmation Modal */}
+      {taskToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 text-rose-600 flex-shrink-0 mt-0.5">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Delete this task permanently?
+                </h3>
+                <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                  This action cannot be undone. The task and its associated data may be permanently removed.
+                </p>
+              </div>
+            </div>
+
+            {deleteError && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-medium text-rose-800">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-1.5 text-xs text-slate-700">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Task Title:</span>
+                <span className="font-bold text-slate-900 line-clamp-1">{taskToDelete.title}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Current Status:</span>
+                <span className="font-semibold text-slate-800">{taskToDelete.status}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Submissions Logged:</span>
+                <span className="font-semibold text-slate-800">{taskToDelete.currentSubmissions}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={deleteLoading}
+                onClick={() => {
+                  setTaskToDelete(null);
+                  setDeleteError(null);
+                }}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteLoading}
+                onClick={handleConfirmDelete}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-rose-700 disabled:opacity-50 transition flex items-center gap-1.5"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>{deleteLoading ? "Deleting..." : "Delete Permanently"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
