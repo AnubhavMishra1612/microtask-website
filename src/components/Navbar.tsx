@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CheckSquare, Search, Menu, X, Shield } from "lucide-react";
+import { CheckSquare, Search, Menu, X, Shield, Wallet } from "lucide-react";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -31,6 +31,13 @@ export function Navbar() {
           >
             <Search className="h-4 w-4" />
             Track Submission
+          </Link>
+          <Link
+            href="/wallet"
+            className="flex items-center gap-1.5 text-sm font-medium text-slate-700 transition hover:text-indigo-600"
+          >
+            <Wallet className="h-4 w-4 text-emerald-600" />
+            My Wallet
           </Link>
           <Link
             href="/admin/login"
@@ -72,6 +79,14 @@ export function Navbar() {
             >
               <Search className="h-4 w-4" />
               Track Submission
+            </Link>
+            <Link
+              href="/wallet"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-2 rounded-md px-3 py-2 text-base font-medium text-slate-800 hover:bg-slate-50 hover:text-indigo-600"
+            >
+              <Wallet className="h-4 w-4 text-emerald-600" />
+              My Wallet
             </Link>
             <Link
               href="/admin/login"

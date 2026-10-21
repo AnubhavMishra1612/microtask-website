@@ -9,6 +9,7 @@ import {
   LogOut,
   Shield,
   User,
+  Wallet,
 } from "lucide-react";
 
 export default async function AdminLayout({
@@ -61,6 +62,13 @@ export default async function AdminLayout({
                 Submissions
               </Link>
               <Link
+                href="/admin/withdrawals"
+                className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition"
+              >
+                <Wallet className="h-4 w-4" />
+                Withdrawals
+              </Link>
+              <Link
                 href="/admin/settings"
                 className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition"
               >
@@ -110,6 +118,13 @@ export default async function AdminLayout({
           >
             <ClipboardList className="h-3.5 w-3.5" />
             Submissions
+          </Link>
+          <Link
+            href="/admin/withdrawals"
+            className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-800 whitespace-nowrap"
+          >
+            <Wallet className="h-3.5 w-3.5" />
+            Withdrawals
           </Link>
           <Link
             href="/admin/settings"

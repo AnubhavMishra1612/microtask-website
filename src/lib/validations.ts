@@ -148,3 +148,44 @@ export function validateImageMagicBytes(buffer: Buffer): { valid: boolean; detec
 
   return { valid: false };
 }
+
+export const userAuthSchema = z.object({
+  contactInfo: z.string().trim().min(3, "Contact info must be at least 3 characters").max(120, "Contact info cannot exceed 120 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(80, "Name cannot exceed 80 characters").optional(),
+});
+
+export const withdrawalRequestSchema = z.object({
+  realFullName: z.string().trim().min(2, "Full name must be at least 2 characters").max(100, "Full name cannot exceed 100 characters"),
+  upiId: z
+    .string()
+    .trim()
+    .min(5, "UPI ID is too short")
+    .max(128, "UPI ID is too long")
+    .refine((val) => /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(val), {
+      message: "Please enter a valid UPI ID (e.g. yourname@okhdfcbank or 9876543210@paytm)",
+    }),
+  amountInr: z
+    .number({ invalid_type_error: "Amount must be a valid number" })
+    .refine((val) => Number.isFinite(val) && !isNaN(val), "Amount must be a valid number")
+    .refine((val) => val >= 25, "Minimum withdrawal amount is ₹25"),
+});
+
+export const updateWithdrawalStatusSchema = z.object({
+  withdrawalId: z.string().min(1, "Withdrawal ID is required"),
+  targetStatus: z.enum(["APPROVED", "PROCESSING", "PAID", "REJECTED"]),
+  reason: z.string().trim().optional(),
+  paymentRef: z.string().trim().optional(),
+}).refine(
+  (data) => {
+    if (data.targetStatus === "REJECTED") {
+      return !!data.reason && data.reason.trim().length >= 5;
+    }
+    return true;
+  },
+  {
+    message: "A rejection reason of at least 5 characters is mandatory when rejecting a withdrawal request",
+    path: ["reason"],
+  }
+);
+

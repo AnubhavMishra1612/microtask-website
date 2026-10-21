@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/session";
 import { reviewSubmissionSchema } from "@/lib/validations";
+import { creditApprovedSubmissionAtomic } from "@/lib/wallet";
 
 export interface ReviewActionResponse {
   error?: string;
@@ -122,6 +123,15 @@ export async function executeReviewSubmission({
         },
       });
 
+      // Atomically and idempotently credit worker wallet if approved
+      if (action === "APPROVED") {
+        await creditApprovedSubmissionAtomic({
+          submissionId,
+          adminId,
+          tx,
+        });
+      }
+
       return log;
     }, {
       maxWait: 10000,
@@ -131,6 +141,8 @@ export async function executeReviewSubmission({
     try {
       revalidatePath("/admin/submissions");
       revalidatePath("/admin");
+      revalidatePath("/admin/withdrawals");
+      revalidatePath("/wallet");
       revalidatePath(`/track/${existing.referenceCode}`);
     } catch {
       // Revalidation might be skipped outside Next request context (e.g., in unit tests)

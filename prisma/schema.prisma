@@ -32,15 +32,38 @@ enum ReviewAction {
   REJECTED
 }
 
+enum WalletTransactionType {
+  EARNING
+  WITHDRAWAL_RESERVE
+  WITHDRAWAL_RELEASE
+  WITHDRAWAL_PAID
+  ADJUSTMENT
+}
+
+enum WalletTransactionStatus {
+  COMPLETED
+  PENDING
+  FAILED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  PAID
+  REJECTED
+}
+
 model AdminUser {
-  id           String             @id @default(cuid())
-  email        String             @unique
-  passwordHash String
-  name         String
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  sessions     AdminSession[]
-  reviewLogs   SubmissionReviewLog[]
+  id                   String                @id @default(cuid())
+  email                String                @unique
+  passwordHash         String
+  name                 String
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  sessions             AdminSession[]
+  reviewLogs           SubmissionReviewLog[]
+  withdrawalReviewLogs WithdrawalReviewLog[]
 }
 
 model AdminSession {
@@ -55,47 +78,159 @@ model AdminSession {
   @@index([expiresAt])
 }
 
+model User {
+  id                 String              @id @default(cuid())
+  name               String
+  contactInfo        String              @unique
+  passwordHash       String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  wallet             Wallet?
+  sessions           UserSession[]
+  submissions        TaskSubmission[]
+  transactions       WalletTransaction[]
+  withdrawalRequests WithdrawalRequest[]
+
+  @@index([contactInfo])
+}
+
+model UserSession {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Wallet {
+  id             String              @id @default(cuid())
+  userId         String              @unique
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availablePaise Int                 @default(0)
+  reservedPaise  Int                 @default(0)
+  totalPaidPaise Int                 @default(0)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  transactions   WalletTransaction[]
+
+  @@index([userId])
+}
+
+model WalletTransaction {
+  id           String                  @id @default(cuid())
+  walletId     String
+  wallet       Wallet                  @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         WalletTransactionType
+  amountPaise  Int
+  amountInr    Decimal                 @db.Decimal(10, 2)
+  submissionId String?                 @unique
+  submission   TaskSubmission?         @relation(fields: [submissionId], references: [id], onDelete: SetNull)
+  taskId       String?
+  task         Task?                   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  withdrawalId String?
+  withdrawal   WithdrawalRequest?      @relation(fields: [withdrawalId], references: [id], onDelete: SetNull)
+  status       WalletTransactionStatus @default(COMPLETED)
+  description  String                  @db.Text
+  createdAt    DateTime                @default(now())
+
+  @@index([walletId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model WithdrawalRequest {
+  id                String                @id @default(cuid())
+  userId            String
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  realFullName      String
+  upiId             String
+  amountPaise       Int
+  amountInr         Decimal               @db.Decimal(10, 2)
+  status            WithdrawalStatus      @default(PENDING)
+  rejectionReason   String?               @db.Text
+  adminNotes        String?               @db.Text
+  paymentRef        String?
+  reviewedByAdminId String?
+  reviewedAt        DateTime?
+  paidAt            DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  transactions      WalletTransaction[]
+  reviewLogs        WithdrawalReviewLog[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WithdrawalReviewLog {
+  id           String            @id @default(cuid())
+  withdrawalId String
+  withdrawal   WithdrawalRequest @relation(fields: [withdrawalId], references: [id], onDelete: Cascade)
+  adminId      String
+  admin        AdminUser         @relation(fields: [adminId], references: [id], onDelete: Restrict)
+  action       WithdrawalStatus
+  reason       String?           @db.Text
+  paymentRef   String?
+  createdAt    DateTime          @default(now())
+
+  @@index([withdrawalId])
+  @@index([adminId])
+}
+
 model Task {
-  id                 String           @id @default(cuid())
+  id                 String              @id @default(cuid())
   title              String
-  description        String           @db.Text
-  taskUrl            String?          @db.Text
-  instructions       String           @db.Text
-  rewardInr          Decimal          @db.Decimal(10, 2)
-  proofRequirements  String           @db.Text
-  proofType          ProofType        @default(BOTH)
-  status             TaskStatus       @default(DRAFT)
+  description        String              @db.Text
+  taskUrl            String?             @db.Text
+  instructions       String              @db.Text
+  rewardInr          Decimal             @db.Decimal(10, 2)
+  proofRequirements  String              @db.Text
+  proofType          ProofType           @default(BOTH)
+  status             TaskStatus          @default(DRAFT)
   deadline           DateTime?
   maxSubmissions     Int?
-  currentSubmissions Int              @default(0)
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  currentSubmissions Int                 @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
   submissions        TaskSubmission[]
+  walletTransactions WalletTransaction[]
 
   @@index([status])
 }
 
 model TaskSubmission {
-  id                 String                @id @default(cuid())
-  taskId             String
-  task               Task                  @relation(fields: [taskId], references: [id], onDelete: Restrict)
-  submitterName      String
-  contactInfo        String
-  proofText          String?               @db.Text
-  proofFileKey       String?
-  proofFileName      String?
-  proofFileSize      Int?
-  proofMimeType      String?
-  rewardSnapshot     Decimal               @db.Decimal(10, 2)
-  referenceCode      String                @unique
-  status             SubmissionStatus      @default(PENDING)
-  rejectionReason    String?               @db.Text
-  submittedAt        DateTime              @default(now())
-  reviewedAt         DateTime?
-  reviewedByAdminId  String?
-  reviewLogs         SubmissionReviewLog[]
+  id                String                @id @default(cuid())
+  taskId            String
+  task              Task                  @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  userId            String?
+  user              User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  submitterName     String
+  contactInfo       String
+  proofText         String?               @db.Text
+  proofFileKey      String?
+  proofFileName     String?
+  proofFileSize     Int?
+  proofMimeType     String?
+  rewardSnapshot    Decimal               @db.Decimal(10, 2)
+  referenceCode     String                @unique
+  status            SubmissionStatus      @default(PENDING)
+  rejectionReason   String?               @db.Text
+  submittedAt       DateTime              @default(now())
+  reviewedAt        DateTime?
+  reviewedByAdminId String?
+  reviewLogs        SubmissionReviewLog[]
+  walletTransaction WalletTransaction?
 
   @@index([taskId])
+  @@index([userId])
   @@index([status])
   @@index([referenceCode])
 }

@@ -7,6 +7,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { generateReferenceCode } from "@/lib/reference";
 import { savePrivateProof, deletePrivateProof, StorageError } from "@/lib/storage";
 import { MAX_FILE_SIZE_BYTES, validateImageMagicBytes } from "@/lib/validations";
+import { getCurrentUser } from "@/lib/user-session";
 import path from "path";
 
 export interface SubmitActionState {
@@ -151,11 +152,23 @@ export async function submitTaskAction(
   // 7. Save submission to database with cryptographic reference token & reward snapshot
   const referenceCode = generateReferenceCode();
 
+  // Check if worker is logged in or already has an account
+  const currentUser = await getCurrentUser();
+  let submitterUserId = currentUser?.id;
+  if (!submitterUserId) {
+    const existingUser = await prisma.user.findUnique({
+      where: { contactInfo },
+      select: { id: true },
+    });
+    submitterUserId = existingUser?.id;
+  }
+
   try {
     await prisma.$transaction(async (tx) => {
       await tx.taskSubmission.create({
         data: {
           taskId: task.id,
+          userId: submitterUserId || null,
           submitterName,
           contactInfo,
           proofText: proofText || null,
