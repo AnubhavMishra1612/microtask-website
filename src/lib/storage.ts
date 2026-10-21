@@ -132,7 +132,16 @@ interface StorageConfig {
 function getStorageConfig(): StorageConfig {
   const isProduction = process.env.NODE_ENV === "production";
   const rawProvider = process.env.STORAGE_PROVIDER;
-  const supabaseUrl = process.env.SUPABASE_URL?.trim();
+
+  // Read SUPABASE_URL or infer from DATABASE_URL if Supabase connection pooler is configured
+  let supabaseUrl = process.env.SUPABASE_URL?.trim();
+  if (!supabaseUrl && process.env.DATABASE_URL) {
+    const match = process.env.DATABASE_URL.match(/postgres\.([a-z0-9]+):/);
+    if (match && match[1]) {
+      supabaseUrl = `https://${match[1]}.supabase.co`;
+    }
+  }
+
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   const bucket = process.env.SUPABASE_STORAGE_BUCKET?.trim() || "task-proofs";
 
@@ -144,19 +153,12 @@ function getStorageConfig(): StorageConfig {
     );
   }
 
-  // Determine effective provider
+  // Determine effective provider: In production, Supabase is always enforced.
   const provider: "supabase" | "local" = isProduction
     ? "supabase"
     : rawProvider === "supabase"
     ? "supabase"
     : "local";
-
-  if (isProduction && rawProvider === "local" && (!supabaseUrl || !serviceRoleKey)) {
-    throw new StorageError(
-      "Local storage is strictly prohibited in production. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
-      "CONFIG_ERROR"
-    );
-  }
 
   if (provider === "supabase") {
     if (!supabaseUrl || !serviceRoleKey) {
