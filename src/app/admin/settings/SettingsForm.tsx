@@ -316,7 +316,7 @@ export function SettingsForm({ initialSettings }: SettingsFormProps) {
           <div className="flex justify-between py-1 border-b border-slate-100">
             <span className="text-slate-500">Storage Provider:</span>
             <span className="font-mono font-bold text-slate-800">
-              {process.env.STORAGE_PROVIDER || "local"}
+              {process.env.STORAGE_PROVIDER || (process.env.NODE_ENV === "production" ? "supabase" : "local")}
             </span>
           </div>
           <div className="flex justify-between py-1 border-b border-slate-100">

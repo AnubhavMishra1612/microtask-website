@@ -5,9 +5,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { generateReferenceCode } from "@/lib/reference";
-import { savePrivateProof, StorageError } from "@/lib/storage";
+import { savePrivateProof, deletePrivateProof, StorageError } from "@/lib/storage";
 import { MAX_FILE_SIZE_BYTES, validateImageMagicBytes } from "@/lib/validations";
-import fs from "fs";
 import path from "path";
 
 export interface SubmitActionState {
@@ -180,21 +179,14 @@ export async function submitTaskAction(
       timeout: 20000,
     });
   } catch (dbError) {
-    console.error("Database submission transaction failed:", dbError);
+    console.error("Database submission transaction failed:", dbError instanceof Error ? dbError.message : "DB error");
 
-    // Clean up orphaned stored file if database write failed
-    if (savedStorageKey && process.env.STORAGE_PROVIDER !== "supabase") {
+    // Clean up orphaned stored file if database write failed (Supabase or local)
+    if (savedStorageKey) {
       try {
-        const localPath = path.resolve(
-          process.cwd(),
-          process.env.LOCAL_STORAGE_DIR || "./storage/private_proofs",
-          savedStorageKey
-        );
-        if (fs.existsSync(localPath)) {
-          await fs.promises.unlink(localPath);
-        }
+        await deletePrivateProof(savedStorageKey);
       } catch (cleanupErr) {
-        console.error("Failed to clean up orphaned file:", cleanupErr);
+        console.error("Failed to clean up orphaned file:", cleanupErr instanceof Error ? cleanupErr.message : "Cleanup error");
       }
     }
 

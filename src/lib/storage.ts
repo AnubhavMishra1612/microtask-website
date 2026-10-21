@@ -55,43 +55,36 @@ export async function savePrivateProof(
   const timestamp = Date.now();
   const storageKey = `proof_${timestamp}_${safeRandomId}${safeExt}`;
 
-  const isProduction = process.env.NODE_ENV === "production";
-  const provider = process.env.STORAGE_PROVIDER || (isProduction ? "supabase" : "local");
+  const config = getStorageConfig();
 
-  // Correction 7: Production must refuse to start or accept uploads when required private-storage config is missing.
-  if (isProduction && provider === "local") {
-    throw new StorageError(
-      "Local storage is strictly prohibited in production. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
-      "CONFIG_ERROR"
-    );
-  }
-
-  if (provider === "supabase") {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const bucket = process.env.SUPABASE_STORAGE_BUCKET || "task-proofs";
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new StorageError(
-        "Missing required Supabase private storage credentials in environment.",
-        "CONFIG_ERROR"
-      );
-    }
+  if (config.provider === "supabase") {
+    const supabaseUrl = config.supabaseUrl!;
+    const serviceRoleKey = config.serviceRoleKey!;
+    const bucket = config.bucket;
 
     // Direct upload to Supabase Storage via REST API
     const uploadUrl = `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/${bucket}/${storageKey}`;
     const response = await fetch(uploadUrl, {
       method: "POST",
       headers: {
+        apikey: serviceRoleKey,
         Authorization: `Bearer ${serviceRoleKey}`,
         "Content-Type": detectedMime,
+        "x-upsert": "false",
       },
       body: fileBuffer,
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new StorageError(`Failed to upload to Supabase storage: ${errText}`, "UPLOAD_FAILED");
+      let detailMsg = errText;
+      try {
+        const parsed = JSON.parse(errText);
+        detailMsg = parsed.message || parsed.error || errText;
+      } catch {
+        // use raw error text
+      }
+      throw new StorageError(`Failed to upload to Supabase storage: ${detailMsg}`, "UPLOAD_FAILED");
     }
 
     return {
@@ -124,6 +117,67 @@ export async function savePrivateProof(
   }
 }
 
+interface StorageConfig {
+  provider: "supabase" | "local";
+  supabaseUrl?: string;
+  serviceRoleKey?: string;
+  bucket: string;
+}
+
+/**
+ * Resolves and validates storage configuration.
+ * Strictly enforces Supabase private storage in production while maintaining
+ * safe local storage for offline development.
+ */
+function getStorageConfig(): StorageConfig {
+  const isProduction = process.env.NODE_ENV === "production";
+  const rawProvider = process.env.STORAGE_PROVIDER;
+  const supabaseUrl = process.env.SUPABASE_URL?.trim();
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const bucket = process.env.SUPABASE_STORAGE_BUCKET?.trim() || "task-proofs";
+
+  // Production safety rule: local filesystem storage is strictly prohibited in production.
+  if (isProduction && rawProvider === "local" && (!supabaseUrl || !serviceRoleKey)) {
+    throw new StorageError(
+      "Local storage is strictly prohibited in production. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+      "CONFIG_ERROR"
+    );
+  }
+
+  // Determine effective provider
+  const provider: "supabase" | "local" = isProduction
+    ? "supabase"
+    : rawProvider === "supabase"
+    ? "supabase"
+    : "local";
+
+  if (isProduction && rawProvider === "local" && (!supabaseUrl || !serviceRoleKey)) {
+    throw new StorageError(
+      "Local storage is strictly prohibited in production. Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+      "CONFIG_ERROR"
+    );
+  }
+
+  if (provider === "supabase") {
+    if (!supabaseUrl || !serviceRoleKey) {
+      const missing: string[] = [];
+      if (!supabaseUrl) missing.push("SUPABASE_URL");
+      if (!serviceRoleKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+      throw new StorageError(
+        `Missing required Supabase private storage credentials in environment (${missing.join(", ")}). Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.`,
+        "CONFIG_ERROR"
+      );
+    }
+  }
+
+  return {
+    provider,
+    supabaseUrl,
+    serviceRoleKey,
+    bucket,
+  };
+}
+
 /**
  * Retrieves file buffer and content-type for an authorized request (e.g. admin review)
  */
@@ -135,21 +189,17 @@ export async function getPrivateProofBuffer(
     throw new StorageError("Invalid storage key format", "INVALID_KEY");
   }
 
-  const isProduction = process.env.NODE_ENV === "production";
-  const provider = process.env.STORAGE_PROVIDER || (isProduction ? "supabase" : "local");
+  const config = getStorageConfig();
 
-  if (provider === "supabase") {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const bucket = process.env.SUPABASE_STORAGE_BUCKET || "task-proofs";
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new StorageError("Missing Supabase credentials", "CONFIG_ERROR");
-    }
+  if (config.provider === "supabase") {
+    const supabaseUrl = config.supabaseUrl!;
+    const serviceRoleKey = config.serviceRoleKey!;
+    const bucket = config.bucket;
 
     const downloadUrl = `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/${bucket}/${storageKey}`;
     const response = await fetch(downloadUrl, {
       headers: {
+        apikey: serviceRoleKey,
         Authorization: `Bearer ${serviceRoleKey}`,
       },
     });
@@ -190,22 +240,18 @@ export async function getPrivateProofSignedUrl(
     throw new StorageError("Invalid storage key format", "INVALID_KEY");
   }
 
-  const isProduction = process.env.NODE_ENV === "production";
-  const provider = process.env.STORAGE_PROVIDER || (isProduction ? "supabase" : "local");
+  const config = getStorageConfig();
 
-  if (provider === "supabase") {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const bucket = process.env.SUPABASE_STORAGE_BUCKET || "task-proofs";
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new StorageError("Missing Supabase credentials for signed URL generation", "CONFIG_ERROR");
-    }
+  if (config.provider === "supabase") {
+    const supabaseUrl = config.supabaseUrl!;
+    const serviceRoleKey = config.serviceRoleKey!;
+    const bucket = config.bucket;
 
     const signEndpoint = `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/sign/${bucket}/${storageKey}`;
     const response = await fetch(signEndpoint, {
       method: "POST",
       headers: {
+        apikey: serviceRoleKey,
         Authorization: `Bearer ${serviceRoleKey}`,
         "Content-Type": "application/json",
       },
@@ -221,6 +267,47 @@ export async function getPrivateProofSignedUrl(
   } else {
     // Development local storage: return authenticated admin stream endpoint
     return `/api/admin/proofs/${storageKey}`;
+  }
+}
+
+/**
+ * Deletes a stored proof file (used to clean up orphaned uploads when database transaction fails)
+ */
+export async function deletePrivateProof(storageKey: string): Promise<void> {
+  if (!/^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp)$/.test(storageKey)) {
+    return;
+  }
+
+  try {
+    const config = getStorageConfig();
+
+    if (config.provider === "supabase") {
+      const supabaseUrl = config.supabaseUrl;
+      const serviceRoleKey = config.serviceRoleKey;
+      const bucket = config.bucket;
+
+      if (!supabaseUrl || !serviceRoleKey) return;
+
+      const deleteEndpoint = `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/${bucket}`;
+      await fetch(deleteEndpoint, {
+        method: "DELETE",
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prefixes: [storageKey] }),
+      });
+    } else {
+      const storageDir = path.resolve(process.cwd(), process.env.LOCAL_STORAGE_DIR || "./storage/private_proofs");
+      const filePath = path.join(storageDir, storageKey);
+
+      if (filePath.startsWith(storageDir) && fs.existsSync(filePath)) {
+        await fs.promises.unlink(filePath);
+      }
+    }
+  } catch (err) {
+    console.error("Cleanup deletion failed:", err instanceof Error ? err.message : "Storage error");
   }
 }
 

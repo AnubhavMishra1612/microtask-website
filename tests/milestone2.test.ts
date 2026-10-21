@@ -8,6 +8,7 @@ import {
   savePrivateProof,
   getPrivateProofBuffer,
   getPrivateProofSignedUrl,
+  deletePrivateProof,
   StorageError,
 } from "../src/lib/storage";
 
@@ -223,6 +224,44 @@ describe("Milestone 2: Database Persistence, Seed Verification & Storage Driver"
         process.env.STORAGE_PROVIDER = origProvider;
         if (origUrl) process.env.SUPABASE_URL = origUrl;
       }
+    });
+
+    it("fails cleanly when Supabase service role key is missing", async () => {
+      const origProvider = process.env.STORAGE_PROVIDER;
+      const origUrl = process.env.SUPABASE_URL;
+      const origKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      try {
+        process.env.STORAGE_PROVIDER = "supabase";
+        process.env.SUPABASE_URL = "https://example.supabase.co";
+        delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        const validBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01]);
+        await expect(savePrivateProof(validBuffer, "photo.jpg")).rejects.toThrowError(
+          /Missing required Supabase private storage credentials/
+        );
+      } finally {
+        process.env.STORAGE_PROVIDER = origProvider;
+        if (origUrl) process.env.SUPABASE_URL = origUrl;
+        else delete process.env.SUPABASE_URL;
+        if (origKey) process.env.SUPABASE_SERVICE_ROLE_KEY = origKey;
+      }
+    });
+
+    it("cleans up stored proof file using deletePrivateProof", async () => {
+      const validPng = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]);
+      const stored = await savePrivateProof(validPng, "proof.png");
+      expect(stored.storageKey).toBeDefined();
+
+      // Verify file exists
+      const retrieved = await getPrivateProofBuffer(stored.storageKey);
+      expect(retrieved.buffer).toBeDefined();
+
+      // Delete file
+      await deletePrivateProof(stored.storageKey);
+
+      // Verify file is gone
+      await expect(getPrivateProofBuffer(stored.storageKey)).rejects.toThrowError(StorageError);
     });
 
     it("rejects oversized files exceeding 5MB limit", async () => {
